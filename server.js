@@ -5,7 +5,8 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || process.env.RAILWAY_PORT || 3000;
+const PORT = process.env.PORT || 3000;
+const HOST = const HOST = '0.0.0.0';
 
 // Middleware
 app.use(cors());
@@ -483,7 +484,7 @@ app.get('/', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   console.log(`\n🚀 Servidor corriendo en puerto ${PORT}`);
   console.log(`📊 API Dashboard: http://localhost:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health\n`);
