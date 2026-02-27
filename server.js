@@ -63,7 +63,6 @@ function buildWhereClause(params, filters) {
     whereClause += ` AND proveedor = $${paramCount++}`;
   }
   if (filters.dimension) {
-    // Soporte para múltiples dimensiones
     const dimensiones = Array.isArray(filters.dimension) ? filters.dimension : [filters.dimension];
     if (dimensiones.length > 0) {
       const dimPlaceholders = dimensiones.map((_, i) => `$${paramCount + i}`).join(',');
@@ -80,7 +79,6 @@ function buildWhereClause(params, filters) {
 // ENDPOINTS DE VENTAS
 // ============================================
 
-// GET /api/ventas/stats - KPIs principales de ventas
 app.get('/api/ventas/stats', async (req, res) => {
   try {
     const filters = {
@@ -90,9 +88,7 @@ app.get('/api/ventas/stats', async (req, res) => {
       cliente: req.query.cliente,
       dimension: req.query.dimension
     };
-
     const { whereClause, queryParams } = buildWhereClause([], filters);
-
     const query = `
       SELECT 
         SUM(CASE WHEN importemonprincipal = 'NULL' OR importemonprincipal IS NULL THEN 0 ELSE importemonprincipal::numeric END) as total_facturado,
@@ -102,7 +98,6 @@ app.get('/api/ventas/stats', async (req, res) => {
       FROM corporacion_analisisfacturaventa
       WHERE ${whereClause}
     `;
-
     const result = await pool.query(query, queryParams);
     res.json(result.rows[0]);
   } catch (error) {
@@ -111,7 +106,6 @@ app.get('/api/ventas/stats', async (req, res) => {
   }
 });
 
-// GET /api/ventas/evolucion - Evolución mensual de ventas
 app.get('/api/ventas/evolucion', async (req, res) => {
   try {
     const filters = {
@@ -121,9 +115,7 @@ app.get('/api/ventas/evolucion', async (req, res) => {
       cliente: req.query.cliente,
       dimension: req.query.dimension
     };
-
     const { whereClause, queryParams } = buildWhereClause([], filters);
-
     const query = `
       SELECT 
         TO_CHAR(DATE_TRUNC('month', fecha::date), 'YYYY-MM') as mes,
@@ -133,7 +125,6 @@ app.get('/api/ventas/evolucion', async (req, res) => {
       GROUP BY DATE_TRUNC('month', fecha::date)
       ORDER BY DATE_TRUNC('month', fecha::date)
     `;
-
     const result = await pool.query(query, queryParams);
     res.json(result.rows);
   } catch (error) {
@@ -142,7 +133,6 @@ app.get('/api/ventas/evolucion', async (req, res) => {
   }
 });
 
-// GET /api/ventas/top-clientes - Top 10 clientes por facturación
 app.get('/api/ventas/top-clientes', async (req, res) => {
   try {
     const filters = {
@@ -151,9 +141,7 @@ app.get('/api/ventas/top-clientes', async (req, res) => {
       empresa: req.query.empresa,
       dimension: req.query.dimension
     };
-
     const { whereClause, queryParams } = buildWhereClause([], filters);
-
     const query = `
       SELECT 
         cliente as nombre,
@@ -164,7 +152,6 @@ app.get('/api/ventas/top-clientes', async (req, res) => {
       ORDER BY total DESC
       LIMIT 10
     `;
-
     const result = await pool.query(query, queryParams);
     res.json(result.rows);
   } catch (error) {
@@ -173,7 +160,6 @@ app.get('/api/ventas/top-clientes', async (req, res) => {
   }
 });
 
-// GET /api/ventas/analisis-comprobantes - Detalle de comprobantes de ventas
 app.get('/api/ventas/analisis-comprobantes', async (req, res) => {
   try {
     const filters = {
@@ -183,10 +169,8 @@ app.get('/api/ventas/analisis-comprobantes', async (req, res) => {
       cliente: req.query.cliente,
       dimension: req.query.dimension
     };
-
     const limit = req.query.limit || 100;
     const { whereClause, queryParams } = buildWhereClause([], filters);
-
     const query = `
       SELECT 
         fechacomprobante as fecha,
@@ -204,7 +188,6 @@ app.get('/api/ventas/analisis-comprobantes', async (req, res) => {
       ORDER BY fechacomprobante DESC, comprobante DESC
       LIMIT $${queryParams.length + 1}
     `;
-
     queryParams.push(limit);
     const result = await pool.query(query, queryParams);
     res.json(result.rows);
@@ -218,7 +201,6 @@ app.get('/api/ventas/analisis-comprobantes', async (req, res) => {
 // ENDPOINTS DE COMPRAS
 // ============================================
 
-// GET /api/compras/stats - KPIs principales de compras
 app.get('/api/compras/stats', async (req, res) => {
   try {
     const filters = {
@@ -228,9 +210,7 @@ app.get('/api/compras/stats', async (req, res) => {
       proveedor: req.query.proveedor,
       dimension: req.query.dimension
     };
-
     const { whereClause, queryParams } = buildWhereClause([], filters);
-
     const query = `
       SELECT 
         SUM(CASE WHEN importemonprincipal = 'NULL' OR importemonprincipal IS NULL THEN 0 ELSE importemonprincipal::numeric END) as total_compras,
@@ -240,7 +220,6 @@ app.get('/api/compras/stats', async (req, res) => {
       FROM corporacion_analisisfacturacompra
       WHERE ${whereClause}
     `;
-
     const result = await pool.query(query, queryParams);
     res.json(result.rows[0]);
   } catch (error) {
@@ -249,7 +228,6 @@ app.get('/api/compras/stats', async (req, res) => {
   }
 });
 
-// GET /api/compras/evolucion - Evolución mensual de compras
 app.get('/api/compras/evolucion', async (req, res) => {
   try {
     const filters = {
@@ -259,9 +237,7 @@ app.get('/api/compras/evolucion', async (req, res) => {
       proveedor: req.query.proveedor,
       dimension: req.query.dimension
     };
-
     const { whereClause, queryParams } = buildWhereClause([], filters);
-
     const query = `
       SELECT 
         TO_CHAR(DATE_TRUNC('month', fecha::date), 'YYYY-MM') as mes,
@@ -271,7 +247,6 @@ app.get('/api/compras/evolucion', async (req, res) => {
       GROUP BY DATE_TRUNC('month', fecha::date)
       ORDER BY DATE_TRUNC('month', fecha::date)
     `;
-
     const result = await pool.query(query, queryParams);
     res.json(result.rows);
   } catch (error) {
@@ -280,7 +255,6 @@ app.get('/api/compras/evolucion', async (req, res) => {
   }
 });
 
-// GET /api/compras/top-proveedores - Top 10 proveedores por compras
 app.get('/api/compras/top-proveedores', async (req, res) => {
   try {
     const filters = {
@@ -289,9 +263,7 @@ app.get('/api/compras/top-proveedores', async (req, res) => {
       empresa: req.query.empresa,
       dimension: req.query.dimension
     };
-
     const { whereClause, queryParams } = buildWhereClause([], filters);
-
     const query = `
       SELECT 
         proveedor as nombre,
@@ -302,7 +274,6 @@ app.get('/api/compras/top-proveedores', async (req, res) => {
       ORDER BY total DESC
       LIMIT 10
     `;
-
     const result = await pool.query(query, queryParams);
     res.json(result.rows);
   } catch (error) {
@@ -311,7 +282,6 @@ app.get('/api/compras/top-proveedores', async (req, res) => {
   }
 });
 
-// GET /api/compras/analisis-comprobantes - Detalle de comprobantes de compras
 app.get('/api/compras/analisis-comprobantes', async (req, res) => {
   try {
     const filters = {
@@ -321,10 +291,8 @@ app.get('/api/compras/analisis-comprobantes', async (req, res) => {
       proveedor: req.query.proveedor,
       dimension: req.query.dimension
     };
-
     const limit = req.query.limit || 100;
     const { whereClause, queryParams } = buildWhereClause([], filters);
-
     const query = `
       SELECT 
         fechacomprobante as fecha,
@@ -342,7 +310,6 @@ app.get('/api/compras/analisis-comprobantes', async (req, res) => {
       ORDER BY fechacomprobante DESC, comprobante DESC
       LIMIT $${queryParams.length + 1}
     `;
-
     queryParams.push(limit);
     const result = await pool.query(query, queryParams);
     res.json(result.rows);
@@ -356,7 +323,6 @@ app.get('/api/compras/analisis-comprobantes', async (req, res) => {
 // ENDPOINTS DE FILTROS
 // ============================================
 
-// GET /api/filtros/clientes - Lista de clientes para filtros
 app.get('/api/filtros/clientes', async (req, res) => {
   try {
     const query = `
@@ -373,7 +339,6 @@ app.get('/api/filtros/clientes', async (req, res) => {
   }
 });
 
-// GET /api/filtros/proveedores - Lista de proveedores para filtros
 app.get('/api/filtros/proveedores', async (req, res) => {
   try {
     const query = `
@@ -390,7 +355,6 @@ app.get('/api/filtros/proveedores', async (req, res) => {
   }
 });
 
-// GET /api/filtros/dimensiones-ventas - Lista de dimensiones de ventas
 app.get('/api/filtros/dimensiones-ventas', async (req, res) => {
   try {
     const query = `
@@ -407,7 +371,6 @@ app.get('/api/filtros/dimensiones-ventas', async (req, res) => {
   }
 });
 
-// GET /api/filtros/dimensiones-compras - Lista de dimensiones de compras
 app.get('/api/filtros/dimensiones-compras', async (req, res) => {
   try {
     const query = `
@@ -424,7 +387,6 @@ app.get('/api/filtros/dimensiones-compras', async (req, res) => {
   }
 });
 
-// GET /api/filtros/empresas - Lista de empresas
 app.get('/api/filtros/empresas', async (req, res) => {
   try {
     const query = `
@@ -438,6 +400,46 @@ app.get('/api/filtros/empresas', async (req, res) => {
   } catch (error) {
     console.error('Error en /api/filtros/empresas:', error);
     res.status(500).json({ error: 'Error al obtener lista de empresas' });
+  }
+});
+
+// ============================================
+// PROXY MOVILIDAD (VisionBlo)
+// Evita el bloqueo CORS desde GitHub Pages
+// ============================================
+
+// POST /api/movilidad?ruta=movil/tablero_general
+// body: { sid: "..." }
+app.post('/api/movilidad', async (req, res) => {
+  try {
+    const ruta = req.query.ruta;
+    if (!ruta) return res.status(400).json({ error: 'Falta parámetro ?ruta=' });
+
+    const url = `https://apps6.visionblo.com/rb/app/${ruta}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': 'https://apps.visionblo.com',
+        'Referer': 'https://apps.visionblo.com/',
+        'User-Agent': 'Mozilla/5.0'
+      },
+      body: JSON.stringify(req.body)
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: `VisionBlo respondió con status ${response.status}`
+      });
+    }
+
+    const data = await response.json();
+    res.json(data);
+
+  } catch (error) {
+    console.error('Error proxy movilidad:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -458,7 +460,7 @@ app.get('/health', async (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     message: 'API Dashboard Corporación del Sur',
-    version: '2.0.0',
+    version: '2.1.0',
     endpoints: {
       ventas: [
         'GET /api/ventas/stats',
@@ -478,6 +480,12 @@ app.get('/', (req, res) => {
         'GET /api/filtros/dimensiones-ventas',
         'GET /api/filtros/dimensiones-compras',
         'GET /api/filtros/empresas'
+      ],
+      movilidad: [
+        'POST /api/movilidad?ruta=movil/tablero_general',
+        'POST /api/movilidad?ruta=movil/fecha_ultimo_reporte',
+        'POST /api/movilidad?ruta=movil/resumen_ultimo_reporte',
+        'POST /api/movilidad?ruta=tipo_combustible/all'
       ]
     }
   });
