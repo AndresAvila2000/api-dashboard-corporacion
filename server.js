@@ -4,6 +4,9 @@ const cors = require('cors');
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// Soporte fetch para versiones antiguas de Node.js
+const nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
@@ -417,7 +420,8 @@ app.post('/api/movilidad', async (req, res) => {
 
     const url = `https://apps6.visionblo.com/rb/app/${ruta}`;
 
-    const response = await fetch(url, {
+    const fetchFn = typeof fetch !== 'undefined' ? fetch : nodeFetch;
+    const response = await fetchFn(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
