@@ -420,6 +420,11 @@ app.post('/api/movilidad', async (req, res) => {
 
     const url = `https://apps6.visionblo.com/rb/app/${ruta}`;
 
+    // Cookie: se puede pasar desde el dashboard como _cookie, o configurar en Railway como variable de entorno
+    const cookie = req.body._cookie || process.env.VISIONBLO_COOKIE || '';
+    const bodyToSend = { ...req.body };
+    delete bodyToSend._cookie;
+
     const fetchFn = typeof fetch !== 'undefined' ? fetch : nodeFetch;
     const response = await fetchFn(url, {
       method: 'POST',
@@ -427,9 +432,10 @@ app.post('/api/movilidad', async (req, res) => {
         'Content-Type': 'application/json',
         'Origin': 'https://apps.visionblo.com',
         'Referer': 'https://apps.visionblo.com/',
-        'User-Agent': 'Mozilla/5.0'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        ...(cookie ? { 'Cookie': cookie } : {})
       },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify(bodyToSend)
     });
 
     if (!response.ok) {
@@ -508,3 +514,4 @@ process.on('SIGTERM', () => {
   pool.end();
   process.exit(0);
 });
+
