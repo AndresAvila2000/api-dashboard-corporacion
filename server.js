@@ -64,6 +64,10 @@ function buildFilters(req, baseWhere = '') {
     filters.push(`BSOrganizacion.Nombre ILIKE $${paramCount++}`);
     params.push(`%${req.query.proveedor}%`);
   }
+  if (req.query.empresa) {
+    filters.push(`FAFEmpresa.Nombre = $${paramCount++}`);
+    params.push(req.query.empresa);
+  }
   if (req.query.dimension) {
     const dims = Array.isArray(req.query.dimension) ? req.query.dimension : [req.query.dimension];
     const dimPlaceholders = dims.map((_, i) => `$${paramCount++}`).join(',');
@@ -102,6 +106,7 @@ app.get('/api/ventas/stats', async (req, res) => {
       INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
       INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
       INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
+      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
       LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
       LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
       ${whereClause}
@@ -136,6 +141,7 @@ app.get('/api/ventas/evolucion', async (req, res) => {
       INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
       INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
       INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
+      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
       LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
       LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
       ${whereClause}
@@ -172,6 +178,7 @@ app.get('/api/ventas/top-clientes', async (req, res) => {
       INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
       INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
       INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
+      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
       LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
       LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
       ${whereClause}
@@ -218,6 +225,7 @@ app.get('/api/ventas/analisis-comprobantes', async (req, res) => {
       INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
       INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
       LEFT JOIN BSProducto ON BSOperacionItem.ProductoID = BSProducto.ProductoID
+      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
       LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
       LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
       ${whereClause}
@@ -256,6 +264,7 @@ app.get('/api/compras/stats', async (req, res) => {
       INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
       INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
       INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
+      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
       LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
       LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
       ${whereClause}
@@ -290,6 +299,7 @@ app.get('/api/compras/evolucion', async (req, res) => {
       INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
       INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
       INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
+      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
       LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
       LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
       ${whereClause}
@@ -326,6 +336,7 @@ app.get('/api/compras/top-proveedores', async (req, res) => {
       INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
       INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
       INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
+      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
       LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
       LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
       ${whereClause}
@@ -372,6 +383,7 @@ app.get('/api/compras/analisis-comprobantes', async (req, res) => {
       INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
       INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
       LEFT JOIN BSProducto ON BSOperacionItem.ProductoID = BSProducto.ProductoID
+      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
       LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
       LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
       ${whereClause}
