@@ -49,29 +49,29 @@ function buildFilters(req, baseWhere = '') {
   let paramCount = 1;
   
   if (req.query.fecha_desde) {
-    filters.push(`BSTransaccion.FechaComprobante >= $${paramCount++}`);
+    filters.push(`"BSTransaccion".FechaComprobante >= $${paramCount++}`);
     params.push(req.query.fecha_desde);
   }
   if (req.query.fecha_hasta) {
-    filters.push(`BSTransaccion.FechaComprobante <= $${paramCount++}`);
+    filters.push(`"BSTransaccion".FechaComprobante <= $${paramCount++}`);
     params.push(req.query.fecha_hasta);
   }
   if (req.query.cliente) {
-    filters.push(`BSOrganizacion.Nombre ILIKE $${paramCount++}`);
+    filters.push(`"BSOrganizacion".Nombre ILIKE $${paramCount++}`);
     params.push(`%${req.query.cliente}%`);
   }
   if (req.query.proveedor) {
-    filters.push(`BSOrganizacion.Nombre ILIKE $${paramCount++}`);
+    filters.push(`"BSOrganizacion".Nombre ILIKE $${paramCount++}`);
     params.push(`%${req.query.proveedor}%`);
   }
   if (req.query.empresa) {
-    filters.push(`FAFEmpresa.Nombre = $${paramCount++}`);
+    filters.push(`"FAFEmpresa".Nombre = $${paramCount++}`);
     params.push(req.query.empresa);
   }
   if (req.query.dimension) {
     const dims = Array.isArray(req.query.dimension) ? req.query.dimension : [req.query.dimension];
     const dimPlaceholders = dims.map((_, i) => `$${paramCount++}`).join(',');
-    filters.push(`BSDimensionSeleccion.Nombre IN (${dimPlaceholders})`);
+    filters.push(`"BSDimensionSeleccion".Nombre IN (${dimPlaceholders})`);
     params.push(...dims);
   }
   
@@ -89,26 +89,26 @@ function buildFilters(req, baseWhere = '') {
 app.get('/api/ventas/stats', async (req, res) => {
   try {
     const { whereClause, params } = buildFilters(req, `
-      WHERE FAFTransaccionCategoria.TransaccionCategoriaID IN (-8, -212, -222, -235)
-      AND BSOperacionItem.Tipo = 0
-      AND BSOrganizacion.EsCliente = 1
+      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-8, -212, -222, -235)
+      AND "BSOperacionItem".Tipo = 0
+      AND "BSOrganizacion".EsCliente = 1
     `);
     
     const query = `
       SELECT 
-        SUM(BSOperacionItem.ImporteMonPrincipal) as total_facturado,
-        COUNT(DISTINCT BSTransaccion.TransaccionID) as cantidad_facturas,
-        COUNT(DISTINCT BSOrganizacion.OrganizacionID) as clientes_unicos,
-        AVG(BSOperacionItem.ImporteMonPrincipal) as promedio_factura
-      FROM BSTransaccion
-      INNER JOIN FAFTransaccionSubtipo ON BSTransaccion.TransaccionSubtipoID = FAFTransaccionSubtipo.TransaccionSubtipoID
-      INNER JOIN FAFTransaccionCategoria ON FAFTransaccionSubtipo.TransaccionCategoriaID = FAFTransaccionCategoria.TransaccionCategoriaID
-      INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
-      INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
-      INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
-      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
-      LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
-      LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
+        SUM("BSOperacionItem".ImporteMonPrincipal) as total_facturado,
+        COUNT(DISTINCT "BSTransaccion".TransaccionID) as cantidad_facturas,
+        COUNT(DISTINCT "BSOrganizacion".OrganizacionID) as clientes_unicos,
+        AVG("BSOperacionItem".ImporteMonPrincipal) as promedio_factura
+      FROM "BSTransaccion"
+      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
+      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
+      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
+      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
+      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
+      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
+      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
+      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
       ${whereClause}
     `;
     
@@ -126,26 +126,26 @@ app.get('/api/ventas/stats', async (req, res) => {
 app.get('/api/ventas/evolucion', async (req, res) => {
   try {
     const { whereClause, params } = buildFilters(req, `
-      WHERE FAFTransaccionCategoria.TransaccionCategoriaID IN (-8, -212, -222, -235)
-      AND BSOperacionItem.Tipo = 0
-      AND BSOrganizacion.EsCliente = 1
+      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-8, -212, -222, -235)
+      AND "BSOperacionItem".Tipo = 0
+      AND "BSOrganizacion".EsCliente = 1
     `);
     
     const query = `
       SELECT 
-        TO_CHAR(BSTransaccion.FechaComprobante, 'YYYY-MM') as mes,
-        SUM(BSOperacionItem.ImporteMonPrincipal) as total
-      FROM BSTransaccion
-      INNER JOIN FAFTransaccionSubtipo ON BSTransaccion.TransaccionSubtipoID = FAFTransaccionSubtipo.TransaccionSubtipoID
-      INNER JOIN FAFTransaccionCategoria ON FAFTransaccionSubtipo.TransaccionCategoriaID = FAFTransaccionCategoria.TransaccionCategoriaID
-      INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
-      INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
-      INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
-      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
-      LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
-      LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
+        TO_CHAR("BSTransaccion".FechaComprobante, 'YYYY-MM') as mes,
+        SUM("BSOperacionItem".ImporteMonPrincipal) as total
+      FROM "BSTransaccion"
+      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
+      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
+      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
+      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
+      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
+      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
+      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
+      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
       ${whereClause}
-      GROUP BY TO_CHAR(BSTransaccion.FechaComprobante, 'YYYY-MM')
+      GROUP BY TO_CHAR("BSTransaccion".FechaComprobante, 'YYYY-MM')
       ORDER BY mes
     `;
     
@@ -163,26 +163,26 @@ app.get('/api/ventas/evolucion', async (req, res) => {
 app.get('/api/ventas/top-clientes', async (req, res) => {
   try {
     const { whereClause, params } = buildFilters(req, `
-      WHERE FAFTransaccionCategoria.TransaccionCategoriaID IN (-8, -212, -222, -235)
-      AND BSOperacionItem.Tipo = 0
-      AND BSOrganizacion.EsCliente = 1
+      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-8, -212, -222, -235)
+      AND "BSOperacionItem".Tipo = 0
+      AND "BSOrganizacion".EsCliente = 1
     `);
     
     const query = `
       SELECT 
-        BSOrganizacion.Nombre as nombre,
-        SUM(BSOperacionItem.ImporteMonPrincipal) as total
-      FROM BSTransaccion
-      INNER JOIN FAFTransaccionSubtipo ON BSTransaccion.TransaccionSubtipoID = FAFTransaccionSubtipo.TransaccionSubtipoID
-      INNER JOIN FAFTransaccionCategoria ON FAFTransaccionSubtipo.TransaccionCategoriaID = FAFTransaccionCategoria.TransaccionCategoriaID
-      INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
-      INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
-      INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
-      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
-      LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
-      LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
+        "BSOrganizacion".Nombre as nombre,
+        SUM("BSOperacionItem".ImporteMonPrincipal) as total
+      FROM "BSTransaccion"
+      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
+      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
+      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
+      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
+      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
+      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
+      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
+      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
       ${whereClause}
-      GROUP BY BSOrganizacion.Nombre
+      GROUP BY "BSOrganizacion".Nombre
       ORDER BY total DESC
       LIMIT 10
     `;
@@ -201,35 +201,35 @@ app.get('/api/ventas/top-clientes', async (req, res) => {
 app.get('/api/ventas/analisis-comprobantes', async (req, res) => {
   try {
     const { whereClause, params } = buildFilters(req, `
-      WHERE FAFTransaccionCategoria.TransaccionCategoriaID IN (-8, -212, -222, -235)
-      AND BSOperacionItem.Tipo = 0
-      AND BSOrganizacion.EsCliente = 1
+      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-8, -212, -222, -235)
+      AND "BSOperacionItem".Tipo = 0
+      AND "BSOrganizacion".EsCliente = 1
     `);
     
     const query = `
       SELECT 
-        BSTransaccion.FechaComprobante as fecha,
-        BSTransaccion.NumeroDocumento as numero_comprobante,
-        FAFTransaccionSubtipo.Nombre as tipo_comprobante,
-        BSOrganizacion.Nombre as cliente,
-        BSProducto.Nombre as producto,
-        BSOperacionItem.Descripcion as descripcion,
-        BSOperacionItem.ImporteMonPrincipal as importe_neto,
-        BSOperacionItem.ImporteGravado as impuestos,
-        BSOperacionItem.Importe as total,
+        "BSTransaccion".FechaComprobante as fecha,
+        "BSTransaccion".NumeroDocumento as numero_comprobante,
+        "FAFTransaccionSubtipo".Nombre as tipo_comprobante,
+        "BSOrganizacion".Nombre as cliente,
+        "BSProducto".Nombre as producto,
+        "BSOperacionItem".Descripcion as descripcion,
+        "BSOperacionItem".ImporteMonPrincipal as importe_neto,
+        "BSOperacionItem".ImporteGravado as impuestos,
+        "BSOperacionItem".Importe as total,
         '' as observaciones
-      FROM BSTransaccion
-      INNER JOIN FAFTransaccionSubtipo ON BSTransaccion.TransaccionSubtipoID = FAFTransaccionSubtipo.TransaccionSubtipoID
-      INNER JOIN FAFTransaccionCategoria ON FAFTransaccionSubtipo.TransaccionCategoriaID = FAFTransaccionCategoria.TransaccionCategoriaID
-      INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
-      INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
-      INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
-      LEFT JOIN BSProducto ON BSOperacionItem.ProductoID = BSProducto.ProductoID
-      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
-      LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
-      LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
+      FROM "BSTransaccion"
+      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
+      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
+      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
+      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
+      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
+      LEFT JOIN "BSProducto" ON "BSOperacionItem".ProductoID = "BSProducto".ProductoID
+      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
+      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
+      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
       ${whereClause}
-      ORDER BY BSTransaccion.FechaComprobante DESC
+      ORDER BY "BSTransaccion".FechaComprobante DESC
       LIMIT 100
     `;
     
@@ -247,26 +247,26 @@ app.get('/api/ventas/analisis-comprobantes', async (req, res) => {
 app.get('/api/compras/stats', async (req, res) => {
   try {
     const { whereClause, params } = buildFilters(req, `
-      WHERE FAFTransaccionCategoria.TransaccionCategoriaID IN (-10, -60)
-      AND BSOperacionItem.Tipo = 0
-      AND BSOrganizacion.EsProveedor = 1
+      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-10, -60)
+      AND "BSOperacionItem".Tipo = 0
+      AND "BSOrganizacion".EsProveedor = 1
     `);
     
     const query = `
       SELECT 
-        SUM(BSOperacionItem.ImporteMonPrincipal) as total_compras,
-        COUNT(DISTINCT BSTransaccion.TransaccionID) as cantidad_facturas,
-        COUNT(DISTINCT BSOrganizacion.OrganizacionID) as proveedores_unicos,
-        AVG(BSOperacionItem.ImporteMonPrincipal) as promedio_compra
-      FROM BSTransaccion
-      INNER JOIN FAFTransaccionSubtipo ON BSTransaccion.TransaccionSubtipoID = FAFTransaccionSubtipo.TransaccionSubtipoID
-      INNER JOIN FAFTransaccionCategoria ON FAFTransaccionSubtipo.TransaccionCategoriaID = FAFTransaccionCategoria.TransaccionCategoriaID
-      INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
-      INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
-      INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
-      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
-      LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
-      LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
+        SUM("BSOperacionItem".ImporteMonPrincipal) as total_compras,
+        COUNT(DISTINCT "BSTransaccion".TransaccionID) as cantidad_facturas,
+        COUNT(DISTINCT "BSOrganizacion".OrganizacionID) as proveedores_unicos,
+        AVG("BSOperacionItem".ImporteMonPrincipal) as promedio_compra
+      FROM "BSTransaccion"
+      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
+      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
+      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
+      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
+      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
+      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
+      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
+      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
       ${whereClause}
     `;
     
@@ -284,26 +284,26 @@ app.get('/api/compras/stats', async (req, res) => {
 app.get('/api/compras/evolucion', async (req, res) => {
   try {
     const { whereClause, params } = buildFilters(req, `
-      WHERE FAFTransaccionCategoria.TransaccionCategoriaID IN (-10, -60)
-      AND BSOperacionItem.Tipo = 0
-      AND BSOrganizacion.EsProveedor = 1
+      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-10, -60)
+      AND "BSOperacionItem".Tipo = 0
+      AND "BSOrganizacion".EsProveedor = 1
     `);
     
     const query = `
       SELECT 
-        TO_CHAR(BSTransaccion.Fecha, 'YYYY-MM') as mes,
-        SUM(BSOperacionItem.ImporteMonPrincipal) as total
-      FROM BSTransaccion
-      INNER JOIN FAFTransaccionSubtipo ON BSTransaccion.TransaccionSubtipoID = FAFTransaccionSubtipo.TransaccionSubtipoID
-      INNER JOIN FAFTransaccionCategoria ON FAFTransaccionSubtipo.TransaccionCategoriaID = FAFTransaccionCategoria.TransaccionCategoriaID
-      INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
-      INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
-      INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
-      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
-      LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
-      LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
+        TO_CHAR("BSTransaccion".Fecha, 'YYYY-MM') as mes,
+        SUM("BSOperacionItem".ImporteMonPrincipal) as total
+      FROM "BSTransaccion"
+      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
+      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
+      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
+      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
+      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
+      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
+      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
+      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
       ${whereClause}
-      GROUP BY TO_CHAR(BSTransaccion.Fecha, 'YYYY-MM')
+      GROUP BY TO_CHAR("BSTransaccion".Fecha, 'YYYY-MM')
       ORDER BY mes
     `;
     
@@ -321,26 +321,26 @@ app.get('/api/compras/evolucion', async (req, res) => {
 app.get('/api/compras/top-proveedores', async (req, res) => {
   try {
     const { whereClause, params } = buildFilters(req, `
-      WHERE FAFTransaccionCategoria.TransaccionCategoriaID IN (-10, -60)
-      AND BSOperacionItem.Tipo = 0
-      AND BSOrganizacion.EsProveedor = 1
+      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-10, -60)
+      AND "BSOperacionItem".Tipo = 0
+      AND "BSOrganizacion".EsProveedor = 1
     `);
     
     const query = `
       SELECT 
-        BSOrganizacion.Nombre as nombre,
-        SUM(BSOperacionItem.ImporteMonPrincipal) as total
-      FROM BSTransaccion
-      INNER JOIN FAFTransaccionSubtipo ON BSTransaccion.TransaccionSubtipoID = FAFTransaccionSubtipo.TransaccionSubtipoID
-      INNER JOIN FAFTransaccionCategoria ON FAFTransaccionSubtipo.TransaccionCategoriaID = FAFTransaccionCategoria.TransaccionCategoriaID
-      INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
-      INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
-      INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
-      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
-      LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
-      LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
+        "BSOrganizacion".Nombre as nombre,
+        SUM("BSOperacionItem".ImporteMonPrincipal) as total
+      FROM "BSTransaccion"
+      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
+      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
+      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
+      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
+      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
+      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
+      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
+      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
       ${whereClause}
-      GROUP BY BSOrganizacion.Nombre
+      GROUP BY "BSOrganizacion".Nombre
       ORDER BY total DESC
       LIMIT 10
     `;
@@ -359,35 +359,35 @@ app.get('/api/compras/top-proveedores', async (req, res) => {
 app.get('/api/compras/analisis-comprobantes', async (req, res) => {
   try {
     const { whereClause, params } = buildFilters(req, `
-      WHERE FAFTransaccionCategoria.TransaccionCategoriaID IN (-10, -60)
-      AND BSOperacionItem.Tipo = 0
-      AND BSOrganizacion.EsProveedor = 1
+      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-10, -60)
+      AND "BSOperacionItem".Tipo = 0
+      AND "BSOrganizacion".EsProveedor = 1
     `);
     
     const query = `
       SELECT 
-        BSTransaccion.Fecha as fecha,
-        BSTransaccion.NumeroDocumento as numero_comprobante,
-        FAFTransaccionSubtipo.Nombre as tipo_comprobante,
-        BSOrganizacion.Nombre as proveedor,
-        BSProducto.Nombre as producto,
-        BSOperacionItem.Descripcion as descripcion,
-        BSOperacionItem.ImporteMonPrincipal as importe_neto,
-        BSOperacionItem.ImporteGravado as impuestos,
-        BSOperacionItem.Importe as total,
+        "BSTransaccion".Fecha as fecha,
+        "BSTransaccion".NumeroDocumento as numero_comprobante,
+        "FAFTransaccionSubtipo".Nombre as tipo_comprobante,
+        "BSOrganizacion".Nombre as proveedor,
+        "BSProducto".Nombre as producto,
+        "BSOperacionItem".Descripcion as descripcion,
+        "BSOperacionItem".ImporteMonPrincipal as importe_neto,
+        "BSOperacionItem".ImporteGravado as impuestos,
+        "BSOperacionItem".Importe as total,
         '' as observaciones
-      FROM BSTransaccion
-      INNER JOIN FAFTransaccionSubtipo ON BSTransaccion.TransaccionSubtipoID = FAFTransaccionSubtipo.TransaccionSubtipoID
-      INNER JOIN FAFTransaccionCategoria ON FAFTransaccionSubtipo.TransaccionCategoriaID = FAFTransaccionCategoria.TransaccionCategoriaID
-      INNER JOIN BSOperacion ON BSTransaccion.TransaccionID = BSOperacion.TransaccionID
-      INNER JOIN BSOperacionItem ON BSTransaccion.TransaccionID = BSOperacionItem.TransaccionID
-      INNER JOIN BSOrganizacion ON BSOperacion.OrganizacionID = BSOrganizacion.OrganizacionID
-      LEFT JOIN BSProducto ON BSOperacionItem.ProductoID = BSProducto.ProductoID
-      LEFT JOIN FAFEmpresa ON BSTransaccion.EmpresaID = FAFEmpresa.EmpresaID
-      LEFT JOIN BSTransaccionDimension ON BSTransaccion.TransaccionID = BSTransaccionDimension.TransaccionID
-      LEFT JOIN BSDimensionSeleccion ON BSTransaccionDimension.RegistroID = BSDimensionSeleccion.RegistroID
+      FROM "BSTransaccion"
+      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
+      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
+      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
+      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
+      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
+      LEFT JOIN "BSProducto" ON "BSOperacionItem".ProductoID = "BSProducto".ProductoID
+      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
+      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
+      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
       ${whereClause}
-      ORDER BY BSTransaccion.Fecha DESC
+      ORDER BY "BSTransaccion".Fecha DESC
       LIMIT 100
     `;
     
@@ -405,9 +405,9 @@ app.get('/api/compras/analisis-comprobantes', async (req, res) => {
 app.get('/api/filtros/clientes', async (req, res) => {
   try {
     const query = `
-      SELECT DISTINCT BSOrganizacion.Nombre as nombre
+      SELECT DISTINCT "BSOrganizacion".Nombre as nombre
       FROM BSOrganizacion
-      WHERE BSOrganizacion.EsCliente = 1
+      WHERE "BSOrganizacion".EsCliente = 1
       ORDER BY nombre
       LIMIT 100
     `;
@@ -425,9 +425,9 @@ app.get('/api/filtros/clientes', async (req, res) => {
 app.get('/api/filtros/proveedores', async (req, res) => {
   try {
     const query = `
-      SELECT DISTINCT BSOrganizacion.Nombre as nombre
+      SELECT DISTINCT "BSOrganizacion".Nombre as nombre
       FROM BSOrganizacion
-      WHERE BSOrganizacion.EsProveedor = 1
+      WHERE "BSOrganizacion".EsProveedor = 1
       ORDER BY nombre
       LIMIT 100
     `;
@@ -445,7 +445,7 @@ app.get('/api/filtros/proveedores', async (req, res) => {
 app.get('/api/filtros/empresas', async (req, res) => {
   try {
     const query = `
-      SELECT DISTINCT FAFEmpresa.Nombre as nombre
+      SELECT DISTINCT "FAFEmpresa".Nombre as nombre
       FROM FAFEmpresa
       ORDER BY nombre
     `;
@@ -463,13 +463,13 @@ app.get('/api/filtros/empresas', async (req, res) => {
 app.get('/api/filtros/dimensiones-ventas', async (req, res) => {
   try {
     const query = `
-      SELECT DISTINCT BSDimensionSeleccion.Nombre as nombre
+      SELECT DISTINCT "BSDimensionSeleccion".Nombre as nombre
       FROM BSDimensionSeleccion
-      INNER JOIN BSTransaccionDimension ON BSDimensionSeleccion.RegistroID = BSTransaccionDimension.RegistroID
-      INNER JOIN BSTransaccion ON BSTransaccionDimension.TransaccionID = BSTransaccion.TransaccionID
-      INNER JOIN FAFTransaccionSubtipo ON BSTransaccion.TransaccionSubtipoID = FAFTransaccionSubtipo.TransaccionSubtipoID
-      INNER JOIN FAFTransaccionCategoria ON FAFTransaccionSubtipo.TransaccionCategoriaID = FAFTransaccionCategoria.TransaccionCategoriaID
-      WHERE FAFTransaccionCategoria.TransaccionCategoriaID IN (-8, -212, -222, -235)
+      INNER JOIN "BSTransaccionDimension" ON "BSDimensionSeleccion".RegistroID = "BSTransaccionDimension".RegistroID
+      INNER JOIN BSTransaccion ON "BSTransaccionDimension".TransaccionID = "BSTransaccion".TransaccionID
+      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
+      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
+      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-8, -212, -222, -235)
       ORDER BY nombre
       LIMIT 100
     `;
@@ -487,13 +487,13 @@ app.get('/api/filtros/dimensiones-ventas', async (req, res) => {
 app.get('/api/filtros/dimensiones-compras', async (req, res) => {
   try {
     const query = `
-      SELECT DISTINCT BSDimensionSeleccion.Nombre as nombre
+      SELECT DISTINCT "BSDimensionSeleccion".Nombre as nombre
       FROM BSDimensionSeleccion
-      INNER JOIN BSTransaccionDimension ON BSDimensionSeleccion.RegistroID = BSTransaccionDimension.RegistroID
-      INNER JOIN BSTransaccion ON BSTransaccionDimension.TransaccionID = BSTransaccion.TransaccionID
-      INNER JOIN FAFTransaccionSubtipo ON BSTransaccion.TransaccionSubtipoID = FAFTransaccionSubtipo.TransaccionSubtipoID
-      INNER JOIN FAFTransaccionCategoria ON FAFTransaccionSubtipo.TransaccionCategoriaID = FAFTransaccionCategoria.TransaccionCategoriaID
-      WHERE FAFTransaccionCategoria.TransaccionCategoriaID IN (-10, -60)
+      INNER JOIN "BSTransaccionDimension" ON "BSDimensionSeleccion".RegistroID = "BSTransaccionDimension".RegistroID
+      INNER JOIN BSTransaccion ON "BSTransaccionDimension".TransaccionID = "BSTransaccion".TransaccionID
+      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
+      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
+      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-10, -60)
       ORDER BY nombre
       LIMIT 100
     `;
