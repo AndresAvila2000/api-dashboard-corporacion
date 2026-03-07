@@ -1,4 +1,4 @@
-// server.js - API Dashboard con queries directos
+// server.js - API Dashboard Corporación del Sur
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -8,11 +8,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Database connection pool
 const pool = new Pool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT || 5432,
@@ -43,44 +41,43 @@ app.get('/health', async (req, res) => {
 // ============================================
 // HELPERS
 // ============================================
-function buildFilters(req, baseWhere = '') {
+function buildFilters(req, tableName) {
   const filters = [];
   const params = [];
   let paramCount = 1;
   
+  const isVentas = tableName.includes('ventas');
+  const fechaCol = isVentas ? 'fechacomprobante' : 'fecha';
+  
   if (req.query.fecha_desde) {
-    filters.push(`"BSTransaccion".FechaComprobante >= $${paramCount++}`);
+    filters.push(`${fechaCol}::date >= $${paramCount++}::date`);
     params.push(req.query.fecha_desde);
   }
   if (req.query.fecha_hasta) {
-    filters.push(`"BSTransaccion".FechaComprobante <= $${paramCount++}`);
+    filters.push(`${fechaCol}::date <= $${paramCount++}::date`);
     params.push(req.query.fecha_hasta);
   }
-  if (req.query.cliente) {
-    filters.push(`"BSOrganizacion".Nombre ILIKE $${paramCount++}`);
+  if (req.query.cliente && isVentas) {
+    filters.push(`cliente ILIKE $${paramCount++}`);
     params.push(`%${req.query.cliente}%`);
   }
-  if (req.query.proveedor) {
-    filters.push(`"BSOrganizacion".Nombre ILIKE $${paramCount++}`);
+  if (req.query.proveedor && !isVentas) {
+    filters.push(`proveedor ILIKE $${paramCount++}`);
     params.push(`%${req.query.proveedor}%`);
   }
   if (req.query.empresa) {
-    filters.push(`"FAFEmpresa".Nombre = $${paramCount++}`);
+    filters.push(`empresa = $${paramCount++}`);
     params.push(req.query.empresa);
   }
   if (req.query.dimension) {
     const dims = Array.isArray(req.query.dimension) ? req.query.dimension : [req.query.dimension];
     const dimPlaceholders = dims.map((_, i) => `$${paramCount++}`).join(',');
-    filters.push(`"BSDimensionSeleccion".Nombre IN (${dimPlaceholders})`);
+    filters.push(`dimensionvalor IN (${dimPlaceholders})`);
     params.push(...dims);
   }
   
-  let whereClause = baseWhere;
-  if (filters.length > 0) {
-    whereClause += (baseWhere ? ' AND ' : ' WHERE ') + filters.join(' AND ');
-  }
-  
-  return { whereClause, params, paramCount };
+  const whereClause = filters.length > 0 ? ' WHERE ' + filters.join(' AND ') : '';
+  return { whereClause, params };
 }
 
 // ============================================
@@ -88,27 +85,15 @@ function buildFilters(req, baseWhere = '') {
 // ============================================
 app.get('/api/ventas/stats', async (req, res) => {
   try {
-    const { whereClause, params } = buildFilters(req, `
-      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-8, -212, -222, -235)
-      AND "BSOperacionItem".Tipo = 0
-      AND "BSOrganizacion".EsCliente = 1
-    `);
+    const { whereClause, params } = buildFilters(req, 'ventas');
     
     const query = `
       SELECT 
-        SUM("BSOperacionItem".ImporteMonPrincipal) as total_facturado,
-        COUNT(DISTINCT "BSTransaccion".TransaccionID) as cantidad_facturas,
-        COUNT(DISTINCT "BSOrganizacion".OrganizacionID) as clientes_unicos,
-        AVG("BSOperacionItem".ImporteMonPrincipal) as promedio_factura
-      FROM "BSTransaccion"
-      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
-      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
-      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
-      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
-      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
-      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
-      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
-      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
+        SUM(importemonprincipal) as total_facturado,
+        COUNT(DISTINCT comprobante) as cantidad_facturas,
+        COUNT(DISTINCT cliente) as clientes_unicos,
+        AVG(importemonprincipal) as promedio_factura
+      FROM corporacion_analisis_de_factura_de_ventas_2
       ${whereClause}
     `;
     
@@ -125,27 +110,15 @@ app.get('/api/ventas/stats', async (req, res) => {
 // ============================================
 app.get('/api/ventas/evolucion', async (req, res) => {
   try {
-    const { whereClause, params } = buildFilters(req, `
-      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-8, -212, -222, -235)
-      AND "BSOperacionItem".Tipo = 0
-      AND "BSOrganizacion".EsCliente = 1
-    `);
+    const { whereClause, params } = buildFilters(req, 'ventas');
     
     const query = `
       SELECT 
-        TO_CHAR("BSTransaccion".FechaComprobante, 'YYYY-MM') as mes,
-        SUM("BSOperacionItem".ImporteMonPrincipal) as total
-      FROM "BSTransaccion"
-      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
-      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
-      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
-      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
-      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
-      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
-      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
-      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
+        TO_CHAR(fechacomprobante, 'YYYY-MM') as mes,
+        SUM(importemonprincipal) as total
+      FROM corporacion_analisis_de_factura_de_ventas_2
       ${whereClause}
-      GROUP BY TO_CHAR("BSTransaccion".FechaComprobante, 'YYYY-MM')
+      GROUP BY TO_CHAR(fechacomprobante, 'YYYY-MM')
       ORDER BY mes
     `;
     
@@ -162,27 +135,15 @@ app.get('/api/ventas/evolucion', async (req, res) => {
 // ============================================
 app.get('/api/ventas/top-clientes', async (req, res) => {
   try {
-    const { whereClause, params } = buildFilters(req, `
-      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-8, -212, -222, -235)
-      AND "BSOperacionItem".Tipo = 0
-      AND "BSOrganizacion".EsCliente = 1
-    `);
+    const { whereClause, params } = buildFilters(req, 'ventas');
     
     const query = `
       SELECT 
-        "BSOrganizacion".Nombre as nombre,
-        SUM("BSOperacionItem".ImporteMonPrincipal) as total
-      FROM "BSTransaccion"
-      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
-      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
-      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
-      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
-      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
-      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
-      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
-      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
+        cliente as nombre,
+        SUM(importemonprincipal) as total
+      FROM corporacion_analisis_de_factura_de_ventas_2
       ${whereClause}
-      GROUP BY "BSOrganizacion".Nombre
+      GROUP BY cliente
       ORDER BY total DESC
       LIMIT 10
     `;
@@ -200,36 +161,23 @@ app.get('/api/ventas/top-clientes', async (req, res) => {
 // ============================================
 app.get('/api/ventas/analisis-comprobantes', async (req, res) => {
   try {
-    const { whereClause, params } = buildFilters(req, `
-      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-8, -212, -222, -235)
-      AND "BSOperacionItem".Tipo = 0
-      AND "BSOrganizacion".EsCliente = 1
-    `);
+    const { whereClause, params } = buildFilters(req, 'ventas');
     
     const query = `
       SELECT 
-        "BSTransaccion".FechaComprobante as fecha,
-        "BSTransaccion".NumeroDocumento as numero_comprobante,
-        "FAFTransaccionSubtipo".Nombre as tipo_comprobante,
-        "BSOrganizacion".Nombre as cliente,
-        "BSProducto".Nombre as producto,
-        "BSOperacionItem".Descripcion as descripcion,
-        "BSOperacionItem".ImporteMonPrincipal as importe_neto,
-        "BSOperacionItem".ImporteGravado as impuestos,
-        "BSOperacionItem".Importe as total,
+        fechacomprobante as fecha,
+        comprobante as numero_comprobante,
+        transaccionsubtiponombre as tipo_comprobante,
+        cliente,
+        producto,
+        descitem as descripcion,
+        importemonprincipal as importe_neto,
+        gravado as impuestos,
+        total,
         '' as observaciones
-      FROM "BSTransaccion"
-      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
-      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
-      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
-      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
-      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
-      LEFT JOIN "BSProducto" ON "BSOperacionItem".ProductoID = "BSProducto".ProductoID
-      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
-      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
-      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
+      FROM corporacion_analisis_de_factura_de_ventas_2
       ${whereClause}
-      ORDER BY "BSTransaccion".FechaComprobante DESC
+      ORDER BY fechacomprobante DESC
       LIMIT 100
     `;
     
@@ -246,27 +194,15 @@ app.get('/api/ventas/analisis-comprobantes', async (req, res) => {
 // ============================================
 app.get('/api/compras/stats', async (req, res) => {
   try {
-    const { whereClause, params } = buildFilters(req, `
-      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-10, -60)
-      AND "BSOperacionItem".Tipo = 0
-      AND "BSOrganizacion".EsProveedor = 1
-    `);
+    const { whereClause, params } = buildFilters(req, 'compras');
     
     const query = `
       SELECT 
-        SUM("BSOperacionItem".ImporteMonPrincipal) as total_compras,
-        COUNT(DISTINCT "BSTransaccion".TransaccionID) as cantidad_facturas,
-        COUNT(DISTINCT "BSOrganizacion".OrganizacionID) as proveedores_unicos,
-        AVG("BSOperacionItem".ImporteMonPrincipal) as promedio_compra
-      FROM "BSTransaccion"
-      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
-      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
-      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
-      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
-      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
-      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
-      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
-      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
+        SUM(importe_mon_principal) as total_compras,
+        COUNT(DISTINCT comprobante) as cantidad_facturas,
+        COUNT(DISTINCT proveedor) as proveedores_unicos,
+        AVG(importe_mon_principal) as promedio_compra
+      FROM corporacion_analisis_de_factura_de_compras_2
       ${whereClause}
     `;
     
@@ -283,27 +219,15 @@ app.get('/api/compras/stats', async (req, res) => {
 // ============================================
 app.get('/api/compras/evolucion', async (req, res) => {
   try {
-    const { whereClause, params } = buildFilters(req, `
-      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-10, -60)
-      AND "BSOperacionItem".Tipo = 0
-      AND "BSOrganizacion".EsProveedor = 1
-    `);
+    const { whereClause, params } = buildFilters(req, 'compras');
     
     const query = `
       SELECT 
-        TO_CHAR("BSTransaccion".Fecha, 'YYYY-MM') as mes,
-        SUM("BSOperacionItem".ImporteMonPrincipal) as total
-      FROM "BSTransaccion"
-      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
-      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
-      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
-      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
-      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
-      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
-      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
-      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
+        TO_CHAR(fecha, 'YYYY-MM') as mes,
+        SUM(importe_mon_principal) as total
+      FROM corporacion_analisis_de_factura_de_compras_2
       ${whereClause}
-      GROUP BY TO_CHAR("BSTransaccion".Fecha, 'YYYY-MM')
+      GROUP BY TO_CHAR(fecha, 'YYYY-MM')
       ORDER BY mes
     `;
     
@@ -320,27 +244,15 @@ app.get('/api/compras/evolucion', async (req, res) => {
 // ============================================
 app.get('/api/compras/top-proveedores', async (req, res) => {
   try {
-    const { whereClause, params } = buildFilters(req, `
-      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-10, -60)
-      AND "BSOperacionItem".Tipo = 0
-      AND "BSOrganizacion".EsProveedor = 1
-    `);
+    const { whereClause, params } = buildFilters(req, 'compras');
     
     const query = `
       SELECT 
-        "BSOrganizacion".Nombre as nombre,
-        SUM("BSOperacionItem".ImporteMonPrincipal) as total
-      FROM "BSTransaccion"
-      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
-      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
-      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
-      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
-      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
-      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
-      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
-      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
+        proveedor as nombre,
+        SUM(importe_mon_principal) as total
+      FROM corporacion_analisis_de_factura_de_compras_2
       ${whereClause}
-      GROUP BY "BSOrganizacion".Nombre
+      GROUP BY proveedor
       ORDER BY total DESC
       LIMIT 10
     `;
@@ -358,36 +270,23 @@ app.get('/api/compras/top-proveedores', async (req, res) => {
 // ============================================
 app.get('/api/compras/analisis-comprobantes', async (req, res) => {
   try {
-    const { whereClause, params } = buildFilters(req, `
-      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-10, -60)
-      AND "BSOperacionItem".Tipo = 0
-      AND "BSOrganizacion".EsProveedor = 1
-    `);
+    const { whereClause, params } = buildFilters(req, 'compras');
     
     const query = `
       SELECT 
-        "BSTransaccion".Fecha as fecha,
-        "BSTransaccion".NumeroDocumento as numero_comprobante,
-        "FAFTransaccionSubtipo".Nombre as tipo_comprobante,
-        "BSOrganizacion".Nombre as proveedor,
-        "BSProducto".Nombre as producto,
-        "BSOperacionItem".Descripcion as descripcion,
-        "BSOperacionItem".ImporteMonPrincipal as importe_neto,
-        "BSOperacionItem".ImporteGravado as impuestos,
-        "BSOperacionItem".Importe as total,
+        fecha,
+        comprobante as numero_comprobante,
+        descripcion as tipo_comprobante,
+        proveedor,
+        producto,
+        descripcion,
+        importe_mon_principal as importe_neto,
+        gravado as impuestos,
+        importe as total,
         '' as observaciones
-      FROM "BSTransaccion"
-      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
-      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
-      INNER JOIN "BSOperacion" ON "BSTransaccion".TransaccionID = "BSOperacion".TransaccionID
-      INNER JOIN "BSOperacion"Item ON "BSTransaccion".TransaccionID = "BSOperacionItem".TransaccionID
-      INNER JOIN "BSOrganizacion" ON "BSOperacion".OrganizacionID = "BSOrganizacion".OrganizacionID
-      LEFT JOIN "BSProducto" ON "BSOperacionItem".ProductoID = "BSProducto".ProductoID
-      LEFT JOIN "FAFEmpresa" ON "BSTransaccion".EmpresaID = "FAFEmpresa".EmpresaID
-      LEFT JOIN "BSTransaccionDimension" ON "BSTransaccion".TransaccionID = "BSTransaccionDimension".TransaccionID
-      LEFT JOIN "BSDimensionSeleccion" ON "BSTransaccionDimension".RegistroID = "BSDimensionSeleccion".RegistroID
+      FROM corporacion_analisis_de_factura_de_compras_2
       ${whereClause}
-      ORDER BY "BSTransaccion".Fecha DESC
+      ORDER BY fecha DESC
       LIMIT 100
     `;
     
@@ -405,9 +304,9 @@ app.get('/api/compras/analisis-comprobantes', async (req, res) => {
 app.get('/api/filtros/clientes', async (req, res) => {
   try {
     const query = `
-      SELECT DISTINCT "BSOrganizacion".Nombre as nombre
-      FROM BSOrganizacion
-      WHERE "BSOrganizacion".EsCliente = 1
+      SELECT DISTINCT cliente as nombre
+      FROM corporacion_analisis_de_factura_de_ventas_2
+      WHERE cliente IS NOT NULL AND cliente != ''
       ORDER BY nombre
       LIMIT 100
     `;
@@ -425,9 +324,9 @@ app.get('/api/filtros/clientes', async (req, res) => {
 app.get('/api/filtros/proveedores', async (req, res) => {
   try {
     const query = `
-      SELECT DISTINCT "BSOrganizacion".Nombre as nombre
-      FROM BSOrganizacion
-      WHERE "BSOrganizacion".EsProveedor = 1
+      SELECT DISTINCT proveedor as nombre
+      FROM corporacion_analisis_de_factura_de_compras_2
+      WHERE proveedor IS NOT NULL AND proveedor != ''
       ORDER BY nombre
       LIMIT 100
     `;
@@ -445,8 +344,13 @@ app.get('/api/filtros/proveedores', async (req, res) => {
 app.get('/api/filtros/empresas', async (req, res) => {
   try {
     const query = `
-      SELECT DISTINCT "FAFEmpresa".Nombre as nombre
-      FROM FAFEmpresa
+      SELECT DISTINCT empresa as nombre
+      FROM (
+        SELECT empresa FROM corporacion_analisis_de_factura_de_ventas_2
+        UNION
+        SELECT empresa FROM corporacion_analisis_de_factura_de_compras_2
+      ) AS combined
+      WHERE empresa IS NOT NULL AND empresa != ''
       ORDER BY nombre
     `;
     const result = await pool.query(query);
@@ -463,13 +367,9 @@ app.get('/api/filtros/empresas', async (req, res) => {
 app.get('/api/filtros/dimensiones-ventas', async (req, res) => {
   try {
     const query = `
-      SELECT DISTINCT "BSDimensionSeleccion".Nombre as nombre
-      FROM BSDimensionSeleccion
-      INNER JOIN "BSTransaccionDimension" ON "BSDimensionSeleccion".RegistroID = "BSTransaccionDimension".RegistroID
-      INNER JOIN BSTransaccion ON "BSTransaccionDimension".TransaccionID = "BSTransaccion".TransaccionID
-      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
-      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
-      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-8, -212, -222, -235)
+      SELECT DISTINCT dimensionvalor as nombre
+      FROM corporacion_analisis_de_factura_de_ventas_2
+      WHERE dimensionvalor IS NOT NULL AND dimensionvalor != ''
       ORDER BY nombre
       LIMIT 100
     `;
@@ -487,13 +387,9 @@ app.get('/api/filtros/dimensiones-ventas', async (req, res) => {
 app.get('/api/filtros/dimensiones-compras', async (req, res) => {
   try {
     const query = `
-      SELECT DISTINCT "BSDimensionSeleccion".Nombre as nombre
-      FROM BSDimensionSeleccion
-      INNER JOIN "BSTransaccionDimension" ON "BSDimensionSeleccion".RegistroID = "BSTransaccionDimension".RegistroID
-      INNER JOIN BSTransaccion ON "BSTransaccionDimension".TransaccionID = "BSTransaccion".TransaccionID
-      INNER JOIN "FAFTransaccionSubtipo" ON "BSTransaccion".TransaccionSubtipoID = "FAFTransaccionSubtipo".TransaccionSubtipoID
-      INNER JOIN "FAFTransaccionCategoria" ON "FAFTransaccionSubtipo".TransaccionCategoriaID = "FAFTransaccionCategoria".TransaccionCategoriaID
-      WHERE "FAFTransaccionCategoria".TransaccionCategoriaID IN (-10, -60)
+      SELECT DISTINCT COALESCE(dimensionvalor, '') as nombre
+      FROM corporacion_analisis_de_factura_de_compras_2
+      WHERE dimensionvalor IS NOT NULL AND dimensionvalor != ''
       ORDER BY nombre
       LIMIT 100
     `;
