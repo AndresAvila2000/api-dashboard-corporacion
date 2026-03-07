@@ -46,7 +46,7 @@ app.get('/api/ventas/stats', async (req, res) => {
         COUNT(*) as cantidad_facturas,
         COUNT(DISTINCT cliente) as clientes_unicos,
         COALESCE(AVG(importemonprincipal), 0) as promedio_factura
-      FROM corporacion_analisis_de_facturas_de_ventas_2
+      FROM corporacion_analisis_de_facturas_de_ventas_2_
     `;
     const result = await pool.query(query);
     res.json(result.rows[0]);
@@ -62,7 +62,7 @@ app.get('/api/ventas/evolucion', async (req, res) => {
       SELECT 
         TO_CHAR(fechacomprobante::date, 'YYYY-MM') as mes,
         SUM(importemonprincipal) as total
-      FROM corporacion_analisis_de_facturas_de_ventas_2
+      FROM corporacion_analisis_de_facturas_de_ventas_2_
       WHERE fechacomprobante IS NOT NULL
       GROUP BY TO_CHAR(fechacomprobante::date, 'YYYY-MM')
       ORDER BY mes
@@ -81,7 +81,7 @@ app.get('/api/ventas/top-clientes', async (req, res) => {
       SELECT 
         cliente as nombre,
         SUM(importemonprincipal) as total
-      FROM corporacion_analisis_de_facturas_de_ventas_2
+      FROM corporacion_analisis_de_facturas_de_ventas_2_
       WHERE cliente IS NOT NULL
       GROUP BY cliente
       ORDER BY total DESC
@@ -109,7 +109,7 @@ app.get('/api/ventas/analisis-comprobantes', async (req, res) => {
         gravado as impuestos,
         total,
         '' as observaciones
-      FROM corporacion_analisis_de_facturas_de_ventas_2
+      FROM corporacion_analisis_de_facturas_de_ventas_2_
       ORDER BY fechacomprobante DESC
       LIMIT 100
     `;
@@ -214,7 +214,7 @@ app.get('/api/filtros/clientes', async (req, res) => {
   try {
     const query = `
       SELECT DISTINCT cliente as nombre
-      FROM corporacion_analisis_de_facturas_de_ventas_2
+      FROM corporacion_analisis_de_facturas_de_ventas_2_
       WHERE cliente IS NOT NULL
       ORDER BY nombre
       LIMIT 100
@@ -248,7 +248,7 @@ app.get('/api/filtros/empresas', async (req, res) => {
   try {
     const query = `
       SELECT DISTINCT empresa as nombre
-      FROM corporacion_analisis_de_facturas_de_ventas_2
+      FROM corporacion_analisis_de_facturas_de_ventas_2_
       WHERE empresa IS NOT NULL
       UNION
       SELECT DISTINCT empresa as nombre
@@ -268,7 +268,7 @@ app.get('/api/filtros/dimensiones-ventas', async (req, res) => {
   try {
     const query = `
       SELECT DISTINCT dimensionvalor as nombre
-      FROM corporacion_analisis_de_facturas_de_ventas_2
+      FROM corporacion_analisis_de_facturas_de_ventas_2_
       WHERE dimensionvalor IS NOT NULL
       ORDER BY nombre
       LIMIT 100
@@ -300,3 +300,4 @@ app.listen(PORT, HOST, () => {
   console.log(`📊 API Dashboard: http://localhost:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health\n`);
 });
+
