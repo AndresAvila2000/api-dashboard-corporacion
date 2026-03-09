@@ -84,7 +84,12 @@ function buildFilters(req, tipo) {
     params.push(req.query.empresa);
   }
   if (req.query.dimension) {
-    filters.push(`dimensionvalor = $${paramCount++}`);
+    // IMPORTANTE: En VENTAS usa dimensionvalor, en COMPRAS usa empresa
+    if (isVentas) {
+      filters.push(`dimensionvalor = $${paramCount++}`);
+    } else {
+      filters.push(`empresa = $${paramCount++}`);
+    }
     params.push(req.query.dimension);
   }
   
@@ -270,6 +275,17 @@ app.get('/api/filtros/dimensiones-ventas', async (req, res) => {
   }
 });
 
+app.get('/api/filtros/dimensiones-compras', async (req, res) => {
+  try {
+    const query = `SELECT DISTINCT empresa as nombre FROM corporacion_analisisfacturadecompras2 WHERE empresa IS NOT NULL AND empresa != '' ORDER BY nombre LIMIT 100`;
+    const result = await pool.query(query);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Servidor en puerto ${PORT}`);
 });
@@ -326,4 +342,3 @@ app.get('/api/compras/detalle', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
