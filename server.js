@@ -178,6 +178,8 @@ app.get('/api/compras/stats', async (req, res) => {
 app.get('/api/compras/evolucion', async (req, res) => {
   try {
     const { whereClause, params } = buildFilters(req, 'compras');
+    console.log('🔍 COMPRAS EVOLUCION - WHERE:', whereClause);
+    console.log('🔍 COMPRAS EVOLUCION - PARAMS:', params);
     const query = `
       SELECT 
         TO_CHAR(fecha::date, 'YYYY-MM') as mes,
@@ -187,7 +189,9 @@ app.get('/api/compras/evolucion', async (req, res) => {
       GROUP BY TO_CHAR(fecha::date, 'YYYY-MM')
       ORDER BY mes
     `;
+    console.log('🔍 QUERY COMPLETA:', query);
     const result = await pool.query(query, params);
+    console.log('🔍 RESULTADOS:', result.rows.length, 'filas');
     res.json(result.rows);
   } catch (error) {
     console.error('Error:', error);
@@ -322,3 +326,4 @@ app.get('/api/compras/detalle', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
