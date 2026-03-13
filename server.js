@@ -192,11 +192,11 @@ app.get('/api/compras/evolucion', async (req, res) => {
     console.log('🔍 COMPRAS EVOLUCION - PARAMS:', params);
     const query = `
       SELECT 
-        TO_CHAR(fecha::date, 'YYYY-MM') as mes,
+        TO_CHAR(fecha::date, 'DD/MM/YYYY') as mes,
         SUM(CASE WHEN importe_mon_principal ~ '^[0-9.]+$' THEN importe_mon_principal::numeric ELSE 0 END) as total
       FROM corporacion_analisisfacturadecompras2
       ${whereClause}
-      GROUP BY TO_CHAR(fecha::date, 'YYYY-MM')
+      GROUP BY TO_CHAR(fecha::date, 'DD/MM/YYYY')
       ORDER BY mes
     `;
     console.log('🔍 QUERY COMPLETA:', query);
