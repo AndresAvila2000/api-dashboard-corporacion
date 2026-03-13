@@ -132,7 +132,7 @@ app.get('/api/ventas/evolucion', async (req, res) => {
         SUM(CASE WHEN importemonprincipal ~ '^[0-9.]+$' THEN importemonprincipal::numeric ELSE 0 END) as total
       FROM corporacion_analisisfacturadeventas2
       ${whereClause}
-      GROUP BY TO_CHAR(fechacomprobante::date, 'YYYY-MM')
+      GROUP BY TO_CHAR(fechacomprobante::date, 'DD/MM/YYYY')
       ORDER BY mes
     `;
     const result = await pool.query(query, params);
