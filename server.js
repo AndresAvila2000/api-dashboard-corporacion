@@ -128,11 +128,11 @@ app.get('/api/ventas/evolucion', async (req, res) => {
     const { whereClause, params } = buildFilters(req, 'ventas');
     const query = `
       SELECT 
-        TO_CHAR(fechacomprobante::date, 'DD/MM/YYYY') as mes,
+        TO_CHAR(fechacomprobante::date, 'YYYY-MM') as mes,
         SUM(CASE WHEN importemonprincipal ~ '^[0-9.]+$' THEN importemonprincipal::numeric ELSE 0 END) as total
       FROM corporacion_analisisfacturadeventas2
       ${whereClause}
-      GROUP BY TO_CHAR(fechacomprobante::date, 'DD/MM/YYYY')
+      GROUP BY TO_CHAR(fechacomprobante::date, 'YYYY-MM')
       ORDER BY mes
     `;
     const result = await pool.query(query, params);
@@ -192,11 +192,11 @@ app.get('/api/compras/evolucion', async (req, res) => {
     console.log('🔍 COMPRAS EVOLUCION - PARAMS:', params);
     const query = `
       SELECT 
-        TO_CHAR(fecha::date, 'DD/MM/YYYY') as mes,
+        TO_CHAR(fecha::date, 'YYYY-MM') as mes,
         SUM(CASE WHEN importe_mon_principal ~ '^[0-9.]+$' THEN importe_mon_principal::numeric ELSE 0 END) as total
       FROM corporacion_analisisfacturadecompras2
       ${whereClause}
-      GROUP BY TO_CHAR(fecha::date, 'DD/MM/YYYY')
+      GROUP BY TO_CHAR(fecha::date, 'YYYY-MM')
       ORDER BY mes
     `;
     console.log('🔍 QUERY COMPLETA:', query);
@@ -318,7 +318,7 @@ app.get('/api/ventas/detalle', async (req, res) => {
     const limit = req.query.limit || 100;
     const query = `
       SELECT 
-        fechacomprobante::date as fecha,
+        TO_CHAR(fechacomprobante::date, 'DD/MM/YYYY') as fecha,
         comprobante,
         cliente,
         producto,
@@ -344,7 +344,7 @@ app.get('/api/compras/detalle', async (req, res) => {
     const limit = req.query.limit || 100;
     const query = `
       SELECT 
-        fecha::date as fecha,
+        TO_CHAR(fecha::date, 'DD/MM/YYYY') as fecha,
         comprobante,
         proveedor,
         producto,
@@ -363,3 +363,4 @@ app.get('/api/compras/detalle', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
