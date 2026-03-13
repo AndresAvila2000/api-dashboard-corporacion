@@ -128,7 +128,7 @@ app.get('/api/ventas/evolucion', async (req, res) => {
     const { whereClause, params } = buildFilters(req, 'ventas');
     const query = `
       SELECT 
-        TO_CHAR(fechacomprobante::date, 'YYYY-MM') as mes,
+        TO_CHAR(fechacomprobante::date, 'DD/MM/YYYY') as mes,
         SUM(CASE WHEN importemonprincipal ~ '^[0-9.]+$' THEN importemonprincipal::numeric ELSE 0 END) as total
       FROM corporacion_analisisfacturadeventas2
       ${whereClause}
